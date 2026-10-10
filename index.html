@@ -1,0 +1,1581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Business Analysis Workbench</title>
+<!-- Supabase Auth client (managed login; used only for Live mode) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --c-bg: #f5f4f1;
+    --c-surface: #ffffff;
+    --c-surface-2: #f9f8f6;
+    --c-border: #e2e0db;
+    --c-border-strong: #ccc9c2;
+    --c-text: #1a1917;
+    --c-text-2: #5a584f;
+    --c-text-3: #9a9790;
+    --c-accent: #2563eb;
+    --c-accent-bg: #eff4ff;
+    --c-accent-border: #bfcfff;
+    --c-green: #16a34a;
+    --c-green-bg: #f0fdf4;
+    --c-green-border: #bbf7d0;
+    --c-amber: #b45309;
+    --c-amber-bg: #fffbeb;
+    --c-amber-border: #fde68a;
+    --c-red: #dc2626;
+    --c-red-bg: #fef2f2;
+    --c-red-border: #fecaca;
+    --c-purple: #7c3aed;
+    --c-purple-bg: #f5f3ff;
+    --c-purple-border: #ddd6fe;
+    --font: 'Inter', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --sidebar-w: 280px;
+    --topbar-h: 48px;
+  }
+
+  body { font-family: var(--font); background: var(--c-bg); color: var(--c-text); font-size: 13px; line-height: 1.5; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* Top bar */
+  .topbar { height: var(--topbar-h); background: var(--c-surface); border-bottom: 1px solid var(--c-border); display: flex; align-items: center; padding: 0 16px; gap: 0; flex-shrink: 0; z-index: 100; }
+  .topbar-logo { font-weight: 600; font-size: 13px; color: var(--c-text); letter-spacing: -0.01em; display: flex; align-items: center; gap: 6px; margin-right: 24px; }
+  .logo-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c-accent); display: inline-block; }
+  .topbar-nav { display: flex; align-items: center; gap: 1px; flex: 1; }
+  .nav-btn { background: none; border: none; padding: 5px 10px; font-size: 12px; font-family: var(--font); color: var(--c-text-2); cursor: pointer; border-radius: 4px; transition: background 0.1s, color 0.1s; }
+  .nav-btn:hover { background: var(--c-bg); color: var(--c-text); }
+  .nav-btn.active { background: var(--c-accent-bg); color: var(--c-accent); font-weight: 500; }
+  .topbar-right { display: flex; align-items: center; gap: 8px; }
+  .kb-status { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--c-text-3); border: 1px solid var(--c-border); padding: 3px 8px; border-radius: 4px; background: var(--c-surface); cursor: pointer; }
+  .kb-status:hover { border-color: var(--c-border-strong); color: var(--c-text-2); }
+  .status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--c-green); }
+
+  /* Layout */
+  .main-layout { display: flex; flex: 1; overflow: hidden; }
+
+  /* Left sidebar */
+  .sidebar { width: var(--sidebar-w); background: var(--c-surface); border-right: 1px solid var(--c-border); display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden; }
+  .sidebar-header { padding: 10px 12px 8px; border-bottom: 1px solid var(--c-border); display: flex; align-items: center; justify-content: space-between; }
+  .sidebar-title { font-size: 11px; font-weight: 600; color: var(--c-text-3); text-transform: uppercase; letter-spacing: 0.05em; }
+  .btn-new { background: var(--c-accent); color: white; border: none; font-family: var(--font); font-size: 11px; font-weight: 500; padding: 4px 8px; border-radius: 3px; cursor: pointer; display: flex; align-items: center; gap: 3px; }
+  .btn-new:hover { background: #1d4ed8; }
+  .sidebar-search { padding: 8px 12px; border-bottom: 1px solid var(--c-border); }
+  .sidebar-search input { width: 100%; background: var(--c-bg); border: 1px solid var(--c-border); border-radius: 3px; padding: 5px 8px; font-size: 12px; font-family: var(--font); color: var(--c-text); outline: none; }
+  .sidebar-search input::placeholder { color: var(--c-text-3); }
+  .sidebar-search input:focus { border-color: var(--c-accent); }
+  .sidebar-list { flex: 1; overflow-y: auto; }
+  .section-label { padding: 8px 12px 4px; font-size: 10px; font-weight: 600; color: var(--c-text-3); text-transform: uppercase; letter-spacing: 0.06em; }
+  .ticket-item { padding: 8px 12px; cursor: pointer; border-left: 2px solid transparent; transition: background 0.1s; }
+  .ticket-item:hover { background: var(--c-bg); }
+  .ticket-item.active { background: var(--c-accent-bg); border-left-color: var(--c-accent); }
+  .ticket-id { font-size: 10px; font-family: var(--mono); color: var(--c-text-3); margin-bottom: 2px; display: flex; align-items: center; justify-content: space-between; }
+  .ticket-name { font-size: 12px; color: var(--c-text); line-height: 1.4; margin-bottom: 4px; }
+  .ticket-meta { display: flex; align-items: center; gap: 4px; }
+  .badge { font-size: 10px; padding: 1px 5px; border-radius: 2px; font-weight: 500; border: 1px solid; }
+  .badge-draft { background: var(--c-amber-bg); color: var(--c-amber); border-color: var(--c-amber-border); }
+  .badge-done { background: var(--c-green-bg); color: var(--c-green); border-color: var(--c-green-border); }
+  .badge-new { background: var(--c-accent-bg); color: var(--c-accent); border-color: var(--c-accent-border); }
+  .badge-review { background: var(--c-purple-bg); color: var(--c-purple); border-color: var(--c-purple-border); }
+  .ticket-date { font-size: 10px; color: var(--c-text-3); margin-left: auto; }
+
+  /* Main workspace */
+  .workspace { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* Import panel */
+  .import-panel { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; max-width: 780px; }
+  .panel-heading { font-size: 14px; font-weight: 600; color: var(--c-text); margin-bottom: 2px; }
+  .panel-sub { font-size: 12px; color: var(--c-text-2); }
+  .import-box { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 5px; overflow: hidden; }
+  .import-box-header { padding: 10px 14px; border-bottom: 1px solid var(--c-border); background: var(--c-surface-2); display: flex; align-items: center; justify-content: space-between; }
+  .import-box-title { font-size: 11px; font-weight: 600; color: var(--c-text-2); text-transform: uppercase; letter-spacing: 0.04em; }
+  .import-box-body { padding: 14px; }
+  .source-tabs { display: flex; background: var(--c-surface-2); border: 1px solid var(--c-border); border-radius: 6px; padding: 3px; margin-bottom: 4px; }
+  .source-tab { flex: 1; text-align: center; padding: 8px 12px; font-size: 12px; font-weight: 600; color: var(--c-text-2); background: none; border: none; border-radius: 4px; cursor: pointer; font-family: var(--font); }
+  .source-tab.active { background: var(--c-surface); color: var(--c-text); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+  .jira-fetch-row { display: flex; gap: 8px; align-items: flex-start; }
+  .jira-fetch-row input { flex: 1; }
+  .jira-fetch-note { font-size: 11px; color: var(--c-text-3); margin-top: 4px; }
+  textarea.import-area { width: 100%; min-height: 140px; background: var(--c-bg); border: 1px solid var(--c-border); border-radius: 3px; padding: 10px 12px; font-size: 12px; font-family: var(--mono); color: var(--c-text); resize: vertical; outline: none; line-height: 1.6; }
+  textarea.import-area:focus { border-color: var(--c-accent); }
+  .meta-row { display: flex; gap: 12px; margin-top: 10px; }
+  .meta-field { flex: 1; }
+  .meta-label { font-size: 11px; color: var(--c-text-3); margin-bottom: 4px; }
+  .meta-input { width: 100%; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 3px; padding: 5px 8px; font-size: 12px; font-family: var(--font); color: var(--c-text); outline: none; }
+  .meta-input:focus { border-color: var(--c-accent); }
+  .meta-input { height: 32px; line-height: 20px; }
+  select.meta-input { cursor: pointer; -webkit-appearance: none; appearance: none; padding-right: 26px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%239a9790' stroke-width='1.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 9px center; }
+  .strip-warning { display: flex; align-items: center; gap: 6px; background: var(--c-amber-bg); border: 1px solid var(--c-amber-border); border-radius: 3px; padding: 7px 10px; font-size: 11px; color: var(--c-amber); margin-top: 10px; }
+  .deliverables-box { margin-top: 12px; padding: 10px 12px; background: var(--c-surface-2); border: 1px solid var(--c-border); border-radius: 4px; }
+  .deliverables-title { font-size: 11px; font-weight: 600; color: var(--c-text-2); margin-bottom: 7px; }
+  .deliverables-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; }
+  .deliverable-option { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--c-text); cursor: pointer; }
+  .deliverable-option input { cursor: pointer; }
+  .deliverables-note { margin-top: 7px; font-size: 10px; color: var(--c-text-3); }
+  .action-row { display: flex; gap: 8px; margin-top: 14px; }
+  .btn-primary { background: var(--c-accent); color: white; border: none; font-family: var(--font); font-size: 12px; font-weight: 500; padding: 7px 14px; border-radius: 3px; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-secondary { background: var(--c-surface); color: var(--c-text-2); border: 1px solid var(--c-border); font-family: var(--font); font-size: 12px; font-weight: 500; padding: 7px 14px; border-radius: 3px; cursor: pointer; }
+  .btn-secondary:hover { background: var(--c-bg); border-color: var(--c-border-strong); color: var(--c-text); }
+  .btn-ghost { background: none; color: var(--c-text-2); border: none; font-family: var(--font); font-size: 12px; padding: 7px 10px; border-radius: 3px; cursor: pointer; }
+  .btn-ghost:hover { background: var(--c-bg); color: var(--c-text); }
+
+  /* Generating / loading */
+  .generating-panel { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+  .gen-spinner { width: 28px; height: 28px; border: 2px solid var(--c-border); border-top-color: var(--c-accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .gen-step { font-size: 12px; color: var(--c-text-2); }
+  .gen-steps-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; width: 320px; }
+  .gen-step-item { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 5px 0; }
+  .step-icon { width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 9px; }
+  .step-done { background: var(--c-green-bg); border: 1px solid var(--c-green-border); color: var(--c-green); }
+  .step-active { background: var(--c-accent-bg); border: 1px solid var(--c-accent-border); }
+  .step-active-spin { width: 10px; height: 10px; border: 1.5px solid var(--c-accent-border); border-top-color: var(--c-accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  .step-pending { background: var(--c-surface-2); border: 1px solid var(--c-border); }
+
+  /* Output panel */
+  .output-panel { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+  .output-topbar { padding: 10px 16px; background: var(--c-surface); border-bottom: 1px solid var(--c-border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .output-ticket-id { font-size: 11px; font-family: var(--mono); color: var(--c-text-3); }
+  .output-ticket-name { font-size: 13px; font-weight: 500; color: var(--c-text); }
+  .output-actions { display: flex; gap: 4px; }
+  .btn-icon { background: none; border: 1px solid var(--c-border); color: var(--c-text-2); font-size: 11px; font-family: var(--font); padding: 4px 8px; border-radius: 3px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+  .btn-icon:hover { background: var(--c-bg); color: var(--c-text); }
+  .output-content { padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; max-width: 820px; }
+  .doc-section { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 5px; overflow: hidden; }
+  .doc-section-header { padding: 8px 14px; border-bottom: 1px solid var(--c-border); background: var(--c-surface-2); display: flex; align-items: center; justify-content: space-between; }
+  .doc-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .title-story { color: var(--c-accent); }
+  .title-gherkin { color: var(--c-green); }
+  .title-questions { color: var(--c-amber); }
+  .doc-section-body { padding: 14px; }
+  .story-block { display: grid; grid-template-columns: 68px 1fr; gap: 6px 10px; }
+  .story-role { font-size: 11px; font-weight: 600; color: var(--c-text-3); padding-top: 1px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .story-text { font-size: 13px; color: var(--c-text); line-height: 1.5; }
+  .gherkin-scenario { margin-bottom: 14px; }
+  .gherkin-scenario:last-child { margin-bottom: 0; }
+  .scenario-title { font-size: 11px; font-weight: 600; color: var(--c-text-2); margin-bottom: 6px; }
+  .gherkin-line { display: flex; gap: 8px; margin-bottom: 4px; font-size: 12px; line-height: 1.5; }
+  .gherkin-kw { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--c-green); min-width: 40px; text-align: right; flex-shrink: 0; padding-top: 1px; }
+  .gherkin-text { color: var(--c-text); }
+  .questions-cats { display: flex; flex-direction: column; gap: 10px; }
+  .q-cat { }
+  .q-cat-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--c-text-3); margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
+  .q-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .q-dot-functional { background: var(--c-accent); }
+  .q-dot-technical { background: var(--c-purple); }
+  .q-dot-regulatory { background: var(--c-amber); }
+  .q-list { display: flex; flex-direction: column; gap: 3px; }
+  .q-item { display: flex; gap: 8px; font-size: 12px; color: var(--c-text); line-height: 1.5; padding: 3px 0; }
+  .q-item.resolved .q-text { color: var(--c-text-3); text-decoration: line-through; }
+  .q-resolve { display: flex; align-items: flex-start; padding-top: 3px; }
+  .q-resolve input { cursor: pointer; }
+  .q-num { color: var(--c-text-3); font-family: var(--mono); font-size: 10px; min-width: 16px; padding-top: 2px; }
+  .editable { outline: none; }
+  .editable:focus { background: #fffef0; }
+
+  /* Action buttons strip */
+  .action-strip { padding: 12px 24px; background: var(--c-surface); border-top: 1px solid var(--c-border); flex-shrink: 0; max-width: 820px; }
+  .action-strip-label { font-size: 10px; font-weight: 600; color: var(--c-text-3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .action-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+  .btn-action { background: var(--c-surface); color: var(--c-text-2); border: 1px solid var(--c-border); font-family: var(--font); font-size: 12px; padding: 6px 12px; border-radius: 3px; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: background 0.1s, border-color 0.1s; }
+  .btn-action:hover { background: var(--c-bg); border-color: var(--c-border-strong); color: var(--c-text); }
+  .btn-action.active { background: var(--c-accent-bg); border-color: var(--c-accent-border); color: var(--c-accent); }
+  .btn-action .a-icon { font-size: 13px; }
+
+  /* Chat bar */
+  .chat-bar { padding: 10px 24px 14px; background: var(--c-surface); border-top: 1px solid var(--c-border); flex-shrink: 0; max-width: 820px; }
+  .chat-input-row { display: flex; gap: 6px; align-items: flex-end; }
+  .chat-input { flex: 1; background: var(--c-bg); border: 1px solid var(--c-border); border-radius: 3px; padding: 7px 10px; font-size: 12px; font-family: var(--font); color: var(--c-text); outline: none; min-height: 32px; max-height: 80px; resize: none; }
+  .chat-input::placeholder { color: var(--c-text-3); }
+  .chat-input:focus { border-color: var(--c-accent); }
+  .btn-send { background: var(--c-accent); color: white; border: none; font-family: var(--font); font-size: 12px; font-weight: 500; padding: 7px 12px; border-radius: 3px; cursor: pointer; white-space: nowrap; }
+  .btn-send:hover { background: #1d4ed8; }
+  .chat-hint { font-size: 10px; color: var(--c-text-3); margin-top: 5px; }
+
+  /* Knowledge base page */
+  .kb-page { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; max-width: 820px; }
+  .kb-header { display: flex; align-items: flex-start; justify-content: space-between; }
+  .kb-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .kb-card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 5px; overflow: hidden; }
+  .kb-card-header { padding: 9px 12px; border-bottom: 1px solid var(--c-border); background: var(--c-surface-2); display: flex; align-items: center; justify-content: space-between; }
+  .kb-card-title { font-size: 11px; font-weight: 600; color: var(--c-text-2); display: flex; align-items: center; gap: 6px; }
+  .kb-card-body { padding: 2px 0; }
+  .kb-row { padding: 7px 12px; border-bottom: 1px solid var(--c-border); display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
+  .kb-row:last-child { border-bottom: none; }
+  .kb-row-name { color: var(--c-text); }
+  .kb-row-meta { font-size: 10px; color: var(--c-text-3); display: flex; align-items: center; gap: 6px; }
+  .kb-row-meta .status-dot { display: inline-block; }
+  .last-sync { font-size: 11px; color: var(--c-text-3); display: flex; align-items: center; gap: 5px; }
+  .btn-refresh { background: none; border: 1px solid var(--c-border); color: var(--c-text-2); font-family: var(--font); font-size: 11px; padding: 4px 9px; border-radius: 3px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+  .btn-refresh:hover { background: var(--c-bg); border-color: var(--c-border-strong); }
+  .kb-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .kb-stat { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 4px; padding: 10px 12px; }
+  .kb-stat-val { font-size: 18px; font-weight: 600; color: var(--c-text); line-height: 1; margin-bottom: 3px; }
+  .kb-stat-label { font-size: 10px; color: var(--c-text-3); }
+
+  /* Open points modal */
+  .overlay { position: fixed; inset: 0; background: rgba(10,10,8,0.35); z-index: 200; display: flex; align-items: flex-start; justify-content: center; padding-top: 60px; }
+  .modal { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 6px; width: 640px; max-height: calc(100vh - 120px); overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.12); }
+  .modal-header { padding: 12px 16px; border-bottom: 1px solid var(--c-border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--c-surface); z-index: 1; }
+  .modal-title { font-size: 13px; font-weight: 600; color: var(--c-text); }
+  .modal-close { background: none; border: none; cursor: pointer; color: var(--c-text-3); font-size: 16px; padding: 2px; line-height: 1; }
+  .modal-close:hover { color: var(--c-text); }
+  .modal-body { padding: 16px; }
+  .modal-tabs { display: flex; gap: 1px; background: var(--c-border); border-radius: 3px; overflow: hidden; margin-bottom: 14px; }
+  .modal-tab { flex: 1; background: var(--c-surface-2); border: none; font-family: var(--font); font-size: 11px; font-weight: 500; color: var(--c-text-2); padding: 6px; cursor: pointer; transition: background 0.1s, color 0.1s; }
+  .modal-tab.active { background: var(--c-accent); color: white; }
+  .modal-tab:hover:not(.active) { background: var(--c-bg); }
+  .modal-section { margin-bottom: 16px; }
+  .modal-section:last-child { margin-bottom: 0; }
+  .modal-section-title { font-size: 11px; font-weight: 600; color: var(--c-text-3); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+  .point-item { display: flex; gap: 10px; padding: 8px 10px; background: var(--c-surface-2); border: 1px solid var(--c-border); border-radius: 3px; margin-bottom: 5px; font-size: 12px; line-height: 1.5; }
+  .point-tag { font-size: 10px; font-weight: 600; padding: 1px 5px; border-radius: 2px; border: 1px solid; white-space: nowrap; align-self: flex-start; margin-top: 1px; }
+  .tag-client { background: var(--c-accent-bg); color: var(--c-accent); border-color: var(--c-accent-border); }
+  .tag-dev { background: var(--c-purple-bg); color: var(--c-purple); border-color: var(--c-purple-border); }
+  .tag-reg { background: var(--c-amber-bg); color: var(--c-amber); border-color: var(--c-amber-border); }
+  .modal-actions { padding: 12px 16px; border-top: 1px solid var(--c-border); display: flex; gap: 8px; justify-content: flex-end; background: var(--c-surface-2); position: sticky; bottom: 0; }
+
+  /* Notification */
+  .notif { position: fixed; bottom: 16px; right: 16px; background: var(--c-text); color: white; font-size: 12px; padding: 9px 14px; border-radius: 4px; z-index: 300; display: flex; align-items: center; gap: 6px; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+  .notif.show { opacity: 1; }
+
+  /* Refresh loading */
+  .refreshing { animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .hidden { display: none !important; }
+  .divider { height: 1px; background: var(--c-border); margin: 2px 0; }
+
+  .chat-msg { padding: 8px 12px 8px 0; border-bottom: 1px solid var(--c-border); font-size: 12px; line-height: 1.5; display: flex; gap: 8px; }
+  .chat-msg:last-child { border-bottom: none; }
+  .chat-msg-role { font-size: 10px; font-weight: 600; color: var(--c-text-3); min-width: 48px; padding-top: 1px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .chat-msg-text { color: var(--c-text); flex: 1; }
+  .chat-history { max-height: 140px; overflow-y: auto; background: var(--c-surface-2); border: 1px solid var(--c-border); border-radius: 3px; padding: 8px 12px; margin-bottom: 8px; }
+
+  svg.icon { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; vertical-align: middle; }
+
+  /* ---- Assignment 2 additions: mode toggle, run status, auth ---- */
+  .mode-toggle { display: flex; border: 1px solid var(--c-border-strong); border-radius: 4px; overflow: hidden; }
+  .mode-toggle button { font-family: var(--font); font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 4px 12px; border: none; background: var(--c-surface); color: var(--c-text-3); cursor: pointer; }
+  .mode-toggle button.on-mock { background: #ea580c; color: #fff; }
+  .mode-toggle button.on-live { background: var(--c-green); color: #fff; }
+  .run-status { display: flex; align-items: center; gap: 8px; padding: 6px 16px; font-size: 12px; border-bottom: 1px solid var(--c-border); background: var(--c-surface-2); color: var(--c-text-2); flex-shrink: 0; min-height: 32px; }
+  .run-status .rs-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c-text-3); flex-shrink: 0; }
+  .run-status.running .rs-dot { background: var(--c-accent); animation: pulse 1s ease-in-out infinite; }
+  .run-status.success { background: var(--c-green-bg); color: var(--c-green); }
+  .run-status.success .rs-dot { background: var(--c-green); }
+  .run-status.error { background: var(--c-red-bg); color: var(--c-red); }
+  .run-status.error .rs-dot { background: var(--c-red); }
+  .run-status.warn { background: var(--c-amber-bg); color: var(--c-amber); }
+  .run-status.warn .rs-dot { background: var(--c-amber); }
+  .run-status .rs-text { flex: 1; word-break: break-word; }
+  .run-status .rs-meta { font-size: 11px; opacity: .8; white-space: nowrap; }
+  .source-badge { font-size: 10px; font-weight: 700; letter-spacing: .05em; padding: 3px 8px; border-radius: 3px; border: 1px solid; white-space: nowrap; }
+  .source-badge.mock { background: var(--c-amber-bg); color: var(--c-amber); border-color: var(--c-amber-border); }
+  .source-badge.live { background: var(--c-green-bg); color: var(--c-green); border-color: var(--c-green-border); }
+  .mock-banner { background: var(--c-amber-bg); border: 1px solid var(--c-amber-border); color: var(--c-amber); border-radius: 3px; padding: 8px 10px; font-size: 12px; margin-bottom: 12px; }
+  .config-grid { display: grid; grid-template-columns: 150px 1fr; gap: 6px 10px; align-items: center; max-width: 760px; }
+  .config-grid label { font-size: 11px; color: var(--c-text-3); }
+  .config-grid input[type=text] { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 3px; padding: 5px 8px; font-size: 12px; font-family: var(--font); color: var(--c-text); outline: none; width: 100%; }
+  .auth-form label { display: block; font-size: 11px; font-weight: 600; color: var(--c-text-2); margin: 10px 0 4px; }
+  .auth-form input { width: 100%; border: 1px solid var(--c-border); border-radius: 3px; padding: 7px 9px; font-family: var(--font); font-size: 13px; }
+  .auth-msg { font-size: 12px; margin-top: 10px; min-height: 18px; }
+  .sample-hint { padding: 4px 12px 8px; font-size: 10.5px; color: var(--c-text-3); line-height: 1.4; }
+  /* panel children keep their natural height; the panel scrolls instead of clipping them */
+  .import-panel > * { flex-shrink: 0; }
+  .deliverables-box.needs-choice { border-color: var(--c-red); background: var(--c-red-bg); }
+  .gen-wait { font-size: 12px; color: var(--c-text-3); max-width: 420px; text-align: center; line-height: 1.5; }
+
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <span class="logo-dot"></span>
+    Business Analysis Workbench
+  </div>
+  <div class="topbar-nav">
+    <button class="nav-btn active" onclick="showPage('workspace')">Workspace</button>
+    <button class="nav-btn" onclick="showPage('kb')">Knowledge base</button>
+  </div>
+  <div class="topbar-right">
+    <div class="mode-toggle" role="group" aria-label="Data source">
+      <button id="mode-mock" class="on-mock" onclick="setMode('mock')" title="Baked-in sample, instant, no network">MOCK</button>
+      <button id="mode-live" onclick="setMode('live')" title="Real n8n webhook and agent">LIVE</button>
+    </div>
+    <div class="kb-status" onclick="toggleConfig()" id="webhook-status" title="Connection settings">
+      <span class="status-dot" id="webhook-dot"></span>
+      <span id="webhook-label">Settings</span>
+    </div>
+    <div class="kb-status" onclick="openAuth()" id="auth-status" title="Sign in for Live mode">
+      <span class="status-dot" id="auth-dot" style="background:var(--c-text-3)"></span>
+      <span id="auth-label">Not signed in</span>
+    </div>
+  </div>
+</div>
+
+<!-- Connection settings -->
+<div id="config-bar" class="hidden" style="background:var(--c-surface-2);border-bottom:1px solid var(--c-border);padding:10px 16px;flex-shrink:0;">
+  <div class="config-grid">
+    <label for="webhookUrl">n8n webhook URL</label>
+    <input type="text" id="webhookUrl" placeholder="https://your-subdomain.app.n8n.cloud/webhook/requirements">
+    <label>Mock behaviour</label>
+    <div style="display:flex;gap:14px;font-size:12px;color:var(--c-text-2)">
+      <label style="display:flex;gap:5px;align-items:center;color:var(--c-text-2);font-size:12px"><input type="radio" name="mockb" value="ok" checked> Success</label>
+      <label style="display:flex;gap:5px;align-items:center;color:var(--c-text-2);font-size:12px"><input type="radio" name="mockb" value="slow"> Slow (8 s)</label>
+      <label style="display:flex;gap:5px;align-items:center;color:var(--c-text-2);font-size:12px"><input type="radio" name="mockb" value="error"> Simulate HTTP 500</label>
+    </div>
+    <span></span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn-secondary" onclick="saveWebhook()">Save</button>
+      <span style="font-size:10.5px;color:var(--c-text-3)">Live calls only work from the hosted page (its origin is on the n8n allow-list). Opened as a local file, use Mock.</span>
+    </div>
+  </div>
+</div>
+
+<!-- Run status: always visible, always says what really happened -->
+<div class="run-status" id="run-status">
+  <span class="rs-dot"></span>
+  <span class="rs-text" id="rs-text">Mock mode: requests return a baked-in sample instantly, with no network call. Switch to LIVE for the real agent.</span>
+  <span class="rs-meta" id="rs-meta"></span>
+</div>
+
+<!-- Sign-in (Supabase Auth — managed provider, nothing hand-built) -->
+<div class="overlay hidden" id="auth-overlay" onclick="closeAuth(event)">
+  <div class="modal" style="width:380px">
+    <div class="modal-header">
+      <span class="modal-title">Sign in for Live mode</span>
+      <button class="modal-close" onclick="closeAuth()">×</button>
+    </div>
+    <div class="modal-body auth-form">
+      <div id="auth-signed-out">
+        <div style="font-size:12px;color:var(--c-text-2)">Live calls are only accepted with a valid session. Login, sessions and passwords are handled by Supabase Auth. Mock mode needs no login.</div>
+        <label for="auth-email">Email</label>
+        <input type="email" id="auth-email" autocomplete="username">
+        <label for="auth-password">Password</label>
+        <input type="password" id="auth-password" autocomplete="current-password" onkeydown="if(event.key==='Enter')signIn()">
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button class="btn-primary" id="auth-btn" onclick="signIn()">Sign in</button>
+        </div>
+      </div>
+      <div id="auth-signed-in" class="hidden">
+        <div style="font-size:12px;color:var(--c-text-2)">Signed in as <strong id="auth-who"></strong>. Live requests send this session's token; n8n verifies it with Supabase before running the agent.</div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button class="btn-secondary" onclick="signOut()">Sign out</button>
+        </div>
+      </div>
+      <div class="auth-msg" id="auth-msg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Main layout -->
+<div class="main-layout">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">Requests</span>
+      <button class="btn-new" onclick="newTicket()">+ New</button>
+    </div>
+    <div class="sidebar-list">
+      <div class="section-label">Sample requests</div>
+      <div class="sample-hint">Click to load the text into the form. Nothing is generated until you press Generate.</div>
+      <div id="sample-list"></div>
+      <div class="divider"></div>
+      <div class="section-label">This session</div>
+      <div id="session-list"><div class="sample-hint">Drafts you generate appear here (kept in memory only, gone on reload).</div></div>
+    </div>
+  </div>
+
+  <!-- Workspace -->
+  <div class="workspace" id="workspace-page">
+
+    <!-- Import panel (shown for new tickets) -->
+    <div class="import-panel" id="import-panel">
+      <div>
+        <div class="panel-heading">Import ticket content</div>
+        <div class="panel-sub">Paste a fictional or sanitised change request, or click a sample on the left. Do not paste real client or company-confidential content.</div>
+      </div>
+      <div class="import-box">
+        <div class="import-box-header">
+          <span class="import-box-title">Ticket / request content</span>
+        </div>
+        <div class="import-box-body">
+          <div class="source-tabs">
+            <button class="source-tab active" type="button">Manual entry — synthetic / sanitised only</button>
+          </div>
+
+          <div id="import-source-manual">
+          <textarea class="import-area" id="import-textarea" placeholder="Paste ticket description, client email, or request details here…
+
+Example:
+  The client requires the ability to upload bulk SEPA XML files (pain.001) for corporate payments. Up to 500 transactions per file. Errors should be shown per-row. Finance team must approve batches above €1M before submission."></textarea>
+          <div class="meta-row">
+            <div class="meta-field">
+              <div class="meta-label">Ticket ID (optional)</div>
+              <input type="text" class="meta-input" id="meta-id" placeholder="e.g. EBK-441" />
+            </div>
+            <div class="meta-field">
+              <div class="meta-label">Module / area</div>
+              <select class="meta-input" id="meta-module">
+                <option value="">Select…</option>
+                <option>Payments</option>
+                <option>Access & Auth</option>
+                <option>Corp Banking</option>
+                <option>Reporting</option>
+                <option>Security</option>
+                <option>Notifications</option>
+                <option>Onboarding</option>
+                <option>Compliance</option>
+              </select>
+            </div>
+            <div class="meta-field">
+              <div class="meta-label">Priority</div>
+              <select class="meta-input" id="meta-priority">
+                <option>Medium</option>
+                <option>High</option>
+                <option>Critical</option>
+                <option>Low</option>
+              </select>
+            </div>
+          </div>
+          <div class="deliverables-box">
+            <div class="deliverables-title">What should the agent produce?</div>
+            <div class="deliverables-grid">
+              <label class="deliverable-option"><input type="checkbox" id="out-user-story" checked> User story</label>
+              <label class="deliverable-option"><input type="checkbox" id="out-acceptance-criteria" checked> Acceptance criteria</label>
+              <label class="deliverable-option"><input type="checkbox" id="out-open-questions" checked> Open questions / gaps</label>
+              <label class="deliverable-option"><input type="checkbox" id="out-solution-outline"> Solution outline</label>
+            </div>
+            <div class="deliverables-note">Knowledge trace and knowledge issues are always generated for grounding and evaluation.</div>
+          </div>
+          <div class="strip-warning">
+            ⚠ Synthetic-data PoC. Do not paste Customer Identifiable Data (CID), personal data, real client/ticket excerpts, screenshots, account or environment configuration, production incidents, confidential roadmap information, credentials, or other company-confidential information. Use fictional or sanitised content only. Automated masking is an additional safeguard and does not make confidential input permissible.
+          </div>
+          <div class="action-row">
+            <button class="btn-primary" onclick="startGeneration()">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z"/></svg>
+              Generate requirements
+            </button>
+            <button class="btn-secondary" onclick="newTicket()">Clear</button>
+          </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Generating panel: shows only what is actually known (elapsed time), no fake step progress -->
+    <div class="generating-panel hidden" id="generating-panel">
+      <div class="gen-spinner"></div>
+      <div style="font-size:13px;font-weight:500;color:var(--c-text)" id="gen-headline">Waiting for the agent…</div>
+      <div class="gen-wait" id="gen-detail"></div>
+    </div>
+
+        <!-- Output panel -->
+    <div id="output-panel" style="flex:1;overflow-y:auto;display:none;flex-direction:column;">
+      <div class="output-topbar">
+        <div>
+          <div class="output-ticket-id"></div>
+          <div class="output-ticket-name"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span id="output-source-badge" class="source-badge mock">MOCK DATA</span><span style="font-size:10px;color:var(--c-text-3)">AI-generated draft. Review before use.</span></div>
+      </div>
+      <div class="output-content" id="output-content">
+        <div id="mock-banner" class="mock-banner hidden"></div>
+
+        <!-- Open questions -->
+        <div class="doc-section">
+          <div class="doc-section-header">
+            <span class="doc-section-title title-questions">Open questions</span>
+            <span style="font-size:10px;color:var(--c-text-3)">Check off once answered</span>
+          </div>
+          <div class="doc-section-body">
+          </div>
+        </div>
+
+        <!-- User story -->
+        <div class="doc-section">
+          <div class="doc-section-header">
+            <span class="doc-section-title title-story">User story</span>
+            <span style="font-size:10px;color:var(--c-text-3)">Click any field to edit</span>
+          </div>
+          <div class="doc-section-body">
+            <div class="story-block">
+              <span class="story-role">As a</span>
+              <span class="story-text editable" contenteditable="true"></span>
+              <span class="story-role">I want</span>
+              <span class="story-text editable" contenteditable="true"></span>
+              <span class="story-role">So that</span>
+              <span class="story-text editable" contenteditable="true"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Acceptance criteria -->
+        <div class="doc-section">
+          <div class="doc-section-header">
+            <span class="doc-section-title title-gherkin">Acceptance criteria — Gherkin</span>
+            <button class="btn-icon" onclick="copyAcceptanceCriteria()">
+              <svg class="icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              Copy
+            </button>
+          </div>
+          <div class="doc-section-body">
+          </div>
+        </div>
+
+        <!-- Solution Outline -->
+        <div class="doc-section" id="solution-outline-section" style="display:none;">
+          <div class="doc-section-header">
+            <span class="doc-section-title">Solution outline <span style="font-weight:400;text-transform:none;color:var(--c-text-3)">— client-facing</span></span>
+            <div style="display:flex;gap:6px;">
+              <button class="btn-icon" onclick="copySolutionOutline()">
+                <svg class="icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy
+              </button>
+              <button class="btn-icon" onclick="exportSolutionOutlineDoc()">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export .doc
+              </button>
+            </div>
+          </div>
+          <div class="doc-section-body" id="solution-outline-body">
+            <!-- populated on generation -->
+          </div>
+        </div>
+
+        <!-- Iterative stakeholder update -->
+        <div class="doc-section" id="update-draft-section">
+          <div class="doc-section-header">
+            <span class="doc-section-title">Stakeholder update</span>
+            <span style="font-size:10px;color:var(--c-text-3)">Same agent, current draft + new information</span>
+          </div>
+          <div class="doc-section-body">
+            <textarea id="stakeholder-update" rows="4" placeholder="Paste a stakeholder answer or newly confirmed information here…" style="width:100%;box-sizing:border-box;border:1px solid var(--c-border);border-radius:3px;padding:10px 12px;font:inherit;font-size:12px;resize:vertical;background:var(--c-bg);color:var(--c-text);"></textarea>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:9px;">
+              <button class="btn-primary" id="update-draft-btn" onclick="updateDraft()">Update draft</button>
+              <span id="update-draft-status" style="font-size:11px;color:var(--c-text-3)">Paste newly confirmed information, then update the current draft.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat history (visible once user has sent a message) -->
+        <div id="chat-history-box" class="hidden">
+          <div style="font-size:11px;font-weight:600;color:var(--c-text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Refinements</div>
+          <div class="chat-history" id="chat-history"></div>
+        </div>
+
+        <div class="doc-section" id="agent-evidence-section">
+          <div class="doc-section-header">
+            <span class="doc-section-title">Agent evidence</span>
+            <span id="draft-status-badge" class="badge">Status pending</span>
+          </div>
+          <div class="doc-section-body" id="agent-evidence-body">
+            <div style="font-size:12px;color:var(--c-text-3)">Knowledge trace will appear after generation.</div>
+          </div>
+        </div>
+
+        <div class="strip-warning" style="margin-top:14px">⚠ AI-generated draft. A human BA must review and validate requirements, assumptions, open questions and source grounding before use.</div>
+
+      </div><!-- /output-content -->
+
+      <!-- Action strip -->
+      <div class="action-strip">
+        <div class="action-strip-label">Next steps</div>
+        <div class="action-buttons">
+          <button class="btn-action" onclick="copyDevTicketDraft()">
+            <svg class="icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            Copy dev ticket draft
+          </button>
+          <button class="btn-action" onclick="copyTestCaseDraft()">
+            <svg class="icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            Copy test case draft
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /output-panel -->
+
+  </div><!-- /workspace-page -->
+
+  <!-- Knowledge base page -->
+  <div class="workspace hidden" id="kb-page">
+    <div class="kb-page">
+      <div class="kb-header"><div><div class="panel-heading">Synthetic knowledge base</div><div class="panel-sub" style="margin-top:2px">Seven local synthetic sources used by this PoC. No Confluence, Jira, GitHub or other company system is connected.</div></div></div>
+      <div class="kb-card"><div class="kb-card-body">
+        <div class="kb-row"><span class="kb-row-name">Forex Product Guide</span><div class="kb-row-meta">Synthetic PoC source</div></div>
+        <div class="kb-row"><span class="kb-row-name">Trading Product Guide</span><div class="kb-row-meta">Synthetic PoC source</div></div>
+        <div class="kb-row"><span class="kb-row-name">STEX Order Status API</span><div class="kb-row-meta">Synthetic PoC source</div></div>
+        <div class="kb-row"><span class="kb-row-name">Investment Proposal Guide</span><div class="kb-row-meta">Synthetic PoC source</div></div>
+        <div class="kb-row"><span class="kb-row-name">Notification Rules</span><div class="kb-row-meta">Synthetic PoC source</div></div>
+        <div class="kb-row"><span class="kb-row-name">UI Guidelines and Standards</span><div class="kb-row-meta">Synthetic PoC source</div></div>
+        <div class="kb-row"><span class="kb-row-name">Release Notes</span><div class="kb-row-meta">Synthetic PoC source</div></div>
+      </div></div>
+    </div>
+  </div>
+
+</div><!-- /main-layout -->
+
+<div class="notif" id="notif" role="status" aria-live="polite"></div>
+
+<script>
+  function resetRequirementSession() {
+    currentRequirementState = null;
+    currentOriginalRequest = '';
+    currentTicketMeta = {};
+    lastSolutionOutline = null;
+
+    var update = document.getElementById('stakeholder-update');
+    if (update) update.value = '';
+
+    var status = document.getElementById('update-draft-status');
+    if (status) status.textContent = 'Add newly confirmed information, then update the current draft.';
+
+    var history = document.getElementById('chat-history');
+    if (history) history.innerHTML = '';
+
+    var historyBox = document.getElementById('chat-history-box');
+    if (historyBox) historyBox.classList.add('hidden');
+
+    var evidence = document.getElementById('agent-evidence-body');
+    if (evidence) evidence.innerHTML = '';
+
+    var badge = document.getElementById('draft-status-badge');
+    if (badge) badge.textContent = '—';
+  }
+
+  // ---- Response field mapping — adjust keys here to match your actual agent JSON schema ----
+  function unwrap(data) {
+    if (Array.isArray(data)) data = data[0] || {};
+    if (data && data.json) data = data.json;
+    if (data && data.output !== undefined && !data.user_story && !data.acceptance_criteria && !data.solution_outline && !data.open_questions) data = data.output;
+    if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e) { return {}; } }
+    return data || {};
+  }
+  function pick(obj, keys, fallback) {
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      if (obj[k] !== undefined && obj[k] !== null) return obj[k];
+    }
+    return fallback;
+  }
+  function mapRequirementsResponse(raw) {
+    var d = unwrap(raw);
+    var story = d.user_story || d.userStory || d.story || {};
+    var ac = pick(d, ['acceptance_criteria', 'acceptanceCriteria', 'scenarios'], []);
+    var oq = pick(d, ['open_questions', 'openQuestions', 'questions'], []);
+    return {
+      as_a: pick(story, ['as_a', 'actor', 'persona'], ''),
+      i_want: pick(story, ['i_want', 'want', 'capability'], ''),
+      so_that: pick(story, ['so_that', 'benefit', 'value'], ''),
+      acceptance_criteria: ac,
+      open_questions: oq,
+      _raw: raw
+    };
+  }
+
+  function stepKeyword(s, fallback) {
+    if (s && s.keyword) return s.keyword;
+    if (typeof s === 'string') {
+      var m = s.match(/^(Given|When|Then|And|But)\b[:\s]*(.*)$/i);
+      if (m) return m[1];
+    }
+    return fallback;
+  }
+  function stepText(s) {
+    if (s && s.text) return s.text;
+    if (typeof s === 'string') {
+      var m = s.match(/^(Given|When|Then|And|But)\b[:\s]*(.*)$/i);
+      return m ? m[2] : s;
+    }
+    return '';
+  }
+
+  function renderGherkin(scenarios) {
+    if (!scenarios || !scenarios.length) return '<div style="font-size:12px;color:var(--c-text-3)">No acceptance criteria returned.</div>';
+    var html = '';
+    function addLine(kw, text) {
+      if (!text) return '';
+      return '<div class="gherkin-line"><span class="gherkin-kw">' + kw + '</span><span class="gherkin-text editable" contenteditable="true">' + escHtml(text) + '</span></div>';
+    }
+    scenarios.forEach(function(sc, i) {
+      var title = sc.title || sc.name || ('Scenario ' + (i + 1));
+      html += '<div class="gherkin-scenario"><div class="scenario-title">' + escHtml(title) + '</div>';
+      if (sc.given || sc.when || sc.then) {
+        var givens = Array.isArray(sc.given) ? sc.given : (sc.given ? [sc.given] : []);
+        var thens = Array.isArray(sc.then) ? sc.then : (sc.then ? [sc.then] : []);
+        givens.forEach(function(t, idx) { html += addLine(idx === 0 ? 'Given' : 'And', t); });
+        html += addLine('When', sc.when);
+        thens.forEach(function(t, idx) { html += addLine(idx === 0 ? 'Then' : 'And', t); });
+      } else {
+        var steps = sc.steps || sc.lines || [];
+        var lastKw = 'Given';
+        steps.forEach(function(st) {
+          var kw = stepKeyword(st, lastKw);
+          lastKw = kw;
+          html += addLine(kw, stepText(st));
+        });
+      }
+      html += '</div>';
+    });
+    return html;
+  }
+
+  function renderAgentEvidence(raw) {
+    var d = unwrap(raw);
+    var trace = (d.knowledge_trace && d.knowledge_trace.sources_consulted) || [];
+    var issues = d.knowledge_issues || {};
+    var status = d.draft_status || 'STATUS NOT RETURNED';
+    var badge = document.getElementById('draft-status-badge');
+    var body = document.getElementById('agent-evidence-body');
+    if (!badge || !body) return;
+    badge.textContent = status;
+    var html = '<div style="font-size:11px;font-weight:600;color:var(--c-text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Sources consulted — current revision</div>';
+    if (!trace.length) html += '<div style="font-size:12px;color:var(--c-text-3);margin-bottom:12px">No sources reported for this revision.</div>';
+    else { html += '<ul style="margin:0 0 12px 18px;padding:0;font-size:12px;line-height:1.6">'; trace.forEach(function(x){ html += '<li><strong>'+escHtml(x.source || 'Source')+'</strong> — '+escHtml(x.reason || '')+'</li>'; }); html += '</ul>'; }
+    function issueBlock(label, arr) { if (!arr || !arr.length) return ''; var h='<div style="font-size:11px;font-weight:600;color:var(--c-text-3);text-transform:uppercase;letter-spacing:.04em;margin:10px 0 4px">'+label+'</div><ul style="margin:0 0 8px 18px;padding:0;font-size:12px;line-height:1.6">'; arr.forEach(function(x){h+='<li>'+escHtml(x)+'</li>';}); return h+'</ul>'; }
+    html += issueBlock('Missing information', issues.missing_information);
+    html += issueBlock('Conflicts', issues.conflicts);
+    html += issueBlock('Unsupported assumptions', issues.unsupported_assumptions);
+    body.innerHTML = html;
+  }
+
+  function renderSolutionOutline(so) {
+    var section = document.getElementById('solution-outline-section');
+    var body = document.getElementById('solution-outline-body');
+    if (!so || typeof so !== 'object' || !Object.keys(so).length) { section.style.display = 'none'; body.innerHTML = ''; lastSolutionOutline = null; return; }
+    lastSolutionOutline = so;
+    var html = '';
+    function block(title, text) {
+      if (!text) return '';
+      return '<div style="font-size:11px;font-weight:600;color:var(--c-text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">' + title + '</div><div class="editable" contenteditable="true" style="font-size:12px;line-height:1.6;margin-bottom:12px;">' + escHtml(text) + '</div>';
+    }
+    function list(title, items) {
+      if (!items || !items.length) return '';
+      var out = '<div style="font-size:11px;font-weight:600;color:var(--c-text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">' + title + '</div><ul style="margin:0 0 12px 18px;padding:0;font-size:12px;line-height:1.6;">';
+      items.forEach(function(it) { out += '<li class="editable" contenteditable="true">' + escHtml(it) + '</li>'; });
+      return out + '</ul>';
+    }
+    html += block('Summary', so.summary);
+    html += block('Current situation', so.current_situation);
+    html += block('Proposed solution', so.proposed_solution || so.proposed_approach);
+    html += '<div style="display:flex;gap:20px;"><div style="flex:1;">' + list('In scope', so.in_scope) + '</div><div style="flex:1;">' + list('Out of scope', so.out_of_scope) + '</div></div>';
+    html += list('Dependencies & constraints', so.dependencies_and_constraints || so.dependencies_and_open_items);
+    html += list('Unresolved items', so.unresolved_items);
+    if (so.completion_status) html += block('Completion status', so.completion_status);
+    body.innerHTML = html;
+    section.style.display = '';
+  }
+
+  function copySolutionOutline() {
+    var body = document.getElementById('solution-outline-body');
+    var text = body.innerText.trim();
+    if (!text) { showNotif('Nothing to copy yet'); return; }
+    navigator.clipboard.writeText(text).then(function() {
+      showNotif('Solution outline copied — paste into Confluence');
+    }, function() {
+      showNotif('Copy failed — select and copy manually');
+    });
+  }
+
+  function exportSolutionOutlineDoc() {
+    var body = document.getElementById('solution-outline-body');
+    var innerContent = body.innerHTML;
+    if (!innerContent.trim()) { showNotif('Nothing to export yet'); return; }
+    var titleEl = document.querySelector('.output-ticket-name');
+    var title = (titleEl ? titleEl.textContent : 'Solution Outline').trim();
+    var htmlDoc = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
+      '<head><meta charset="utf-8"><title>' + escHtml(title) + '</title>' +
+      '<style>body{font-family:Calibri,Arial,sans-serif;font-size:11pt;} h1{font-size:16pt;} ul{margin:0 0 12pt 18pt;} li{margin-bottom:4pt;}</style>' +
+      '</head><body><h1>Solution Outline — ' + escHtml(title) + '</h1>' + innerContent + '</body></html>';
+    var blob = new Blob(['\ufeff', htmlDoc], { type: 'application/msword' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'Solution_Outline_' + title.replace(/[^a-z0-9]+/gi, '_').slice(0, 60) + '.doc';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+    showNotif('Solution outline exported as .doc');
+  }
+
+  function copyAcceptanceCriteria() {
+    var body = document.querySelector('.title-gherkin').closest('.doc-section').querySelector('.doc-section-body');
+    var scenarios = body.querySelectorAll('.gherkin-scenario');
+    var lines = [];
+    scenarios.forEach(function(sc) {
+      var title = sc.querySelector('.scenario-title');
+      if (title) lines.push(title.textContent.trim());
+      sc.querySelectorAll('.gherkin-line').forEach(function(gl) {
+        var kw = gl.querySelector('.gherkin-kw');
+        var txt = gl.querySelector('.gherkin-text');
+        if (kw && txt) lines.push('  ' + kw.textContent.trim() + ' ' + txt.textContent.trim());
+      });
+      lines.push('');
+    });
+    var text = lines.join('\n').trim();
+    if (!text) { showNotif('Nothing to copy yet'); return; }
+    navigator.clipboard.writeText(text).then(function() {
+      showNotif('Acceptance criteria copied — paste into Jira');
+    }, function() {
+      showNotif('Copy failed — select and copy manually');
+    });
+  }
+
+  function copyDevTicketDraft() {
+    if (!lastSuggestedTicket || !lastSuggestedTicket.title) {
+      showNotif('No draft ticket suggestion available yet');
+      return;
+    }
+    var t = lastSuggestedTicket;
+    var text = 'Title: ' + t.title +
+      '\nType: ' + (t.issue_type || 'Dev Task') +
+      (t.link_to_external ? '\n' + t.link_to_external : '') +
+      '\n\n' + (t.description || '');
+    navigator.clipboard.writeText(text).then(function() {
+      showNotif('Dev ticket draft copied — paste into Jira (never created automatically, NFR-2)');
+    }, function() {
+      showNotif('Copy failed — select and copy manually');
+    });
+  }
+
+  function copyTestCaseDraft() {
+    if (!lastSuggestedTicket || !lastSuggestedTicket.suggested_test_case_title) {
+      showNotif('No test case suggestion available for this draft');
+      return;
+    }
+    navigator.clipboard.writeText(lastSuggestedTicket.suggested_test_case_title).then(function() {
+      showNotif('Test case title copied — starting point only, expand before use');
+    }, function() {
+      showNotif('Copy failed — select and copy manually');
+    });
+  }
+
+  function toggleResolved(checkbox) {
+    var item = checkbox.closest('.q-item');
+    if (checkbox.checked) {
+      item.classList.add('resolved');
+    } else {
+      item.classList.remove('resolved');
+    }
+  }
+
+  function renderOpenQuestions(oq) {
+    var cats = { functional: [], technical: [], regulatory: [] };
+    if (Array.isArray(oq)) {
+      oq.forEach(function(q) {
+        var cat = (q.category || 'functional').toLowerCase();
+        if (!cats[cat]) cats[cat] = [];
+        cats[cat].push(typeof q === 'string' ? q : (q.text || q.question || ''));
+      });
+    } else if (oq && typeof oq === 'object') {
+      Object.keys(oq).forEach(function(cat) {
+        var val = oq[cat];
+        if (Array.isArray(val)) {
+          cats[cat.toLowerCase()] = val;
+        } else if (typeof val === 'string' && val.trim()) {
+          cats[cat.toLowerCase()] = [val];
+        }
+        // else: ignore non-array, non-string, or empty values rather than crash
+      });
+    }
+    var labels = { functional: 'Functional', technical: 'Technical', regulatory: 'Regulatory' };
+    var dots = { functional: 'q-dot-functional', technical: 'q-dot-technical', regulatory: 'q-dot-regulatory' };
+    var html = '<div class="questions-cats">';
+    Object.keys(cats).forEach(function(cat) {
+      var items = cats[cat];
+      if (!items || !items.length) return;
+      html += '<div class="q-cat" style="margin-top:6px"><div class="q-cat-label"><span class="q-dot ' + (dots[cat] || 'q-dot-functional') + '"></span>' + (labels[cat] || cat) + '</div><div class="q-list">';
+      items.forEach(function(text, i) {
+        html += '<div class="q-item"><label class="q-resolve"><input type="checkbox" onchange="toggleResolved(this)"></label><span class="q-num">' + cat.charAt(0).toUpperCase() + (i + 1) + '</span><span contenteditable="true" class="q-text editable">' + escHtml(text) + '</span></div>';
+      });
+      html += '</div></div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+
+  function getRequestedOutputs() {
+    var outputs = [];
+    if (document.getElementById('out-user-story') && document.getElementById('out-user-story').checked) outputs.push('user_story');
+    if (document.getElementById('out-acceptance-criteria') && document.getElementById('out-acceptance-criteria').checked) outputs.push('acceptance_criteria');
+    if (document.getElementById('out-open-questions') && document.getElementById('out-open-questions').checked) outputs.push('open_questions');
+    if (document.getElementById('out-solution-outline') && document.getElementById('out-solution-outline').checked) outputs.push('solution_outline');
+    return outputs;
+  }
+
+  function applyRequestedOutputVisibility(requested) {
+    var storySection = document.querySelector('.title-story').closest('.doc-section');
+    var acSection = document.querySelector('.title-gherkin').closest('.doc-section');
+    var qSection = document.querySelector('.title-questions').closest('.doc-section');
+    storySection.style.display = requested.indexOf('user_story') >= 0 ? '' : 'none';
+    acSection.style.display = requested.indexOf('acceptance_criteria') >= 0 ? '' : 'none';
+    qSection.style.display = requested.indexOf('open_questions') >= 0 ? '' : 'none';
+  }
+
+  // =====================================================================
+  // CONFIG: fill in once, then host the page (GitHub Pages).
+  // The Supabase anon key is a PUBLIC key by design (safe in a web page);
+  // never put an Anthropic key or a Supabase service_role key here.
+  // =====================================================================
+  var CONFIG = {
+    WEBHOOK_URL: 'https://demel.app.n8n.cloud/webhook/06b33e7b-e205-463c-a42e-05a947546569',          // n8n Webhook node -> Production URL, e.g. https://YOUR-SUBDOMAIN.app.n8n.cloud/webhook/06b33e7b-...
+    SUPABASE_URL: 'https://hncmbxypacuasokdrpqm.supabase.co',         // e.g. https://abcdefgh.supabase.co
+    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhuY21ieHlwYWN1YXNva2RycHFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NDY1MTYsImV4cCI6MjEwNzIyMjUxNn0.Sh_KZwT7LsoiFGAdKWHMx9EJQR4JpUhxkEa1SDSt7_s',    // Project Settings -> API -> anon public key
+    LIVE_TIMEOUT_MS: 120000
+  };
+
+  // ---------------------------------------------------------------------
+  // Sample requests (fictional) and their baked-in mock responses
+  // ---------------------------------------------------------------------
+  var SAMPLES = [
+    {
+      id: 'fx',
+      ticket_id: 'EBK-431', module: 'Payments', priority: 'High',
+      title: 'Real-time FX rate display on payment confirmation',
+      text: 'Clients making cross-currency payments complain they only see the converted amount after the payment is booked. They want the live FX rate and the debited amount in their home currency shown on the confirmation screen before they submit. Some currency pairs are priced manually by the treasury desk.'
+    },
+    {
+      id: 'so',
+      ticket_id: 'EBK-429', module: 'Payments', priority: 'Medium',
+      title: 'Amend recurring standing orders',
+      text: 'Retail users can create standing orders but must delete and re-create them to change the amount or end date. Request: allow amending amount, frequency and end date of an existing standing order. Changes made less than one business day before the next execution should apply from the following execution.'
+    }
+  ];
+
+  var MOCKS = {
+    fx: {
+      user_story: {
+        as_a: 'bank end-user initiating a cross-currency payment',
+        i_want: 'to see the live FX rate and the resulting debit amount in my home currency on the confirmation screen before I submit',
+        so_that: 'I can verify the exact amount that will be debited and make an informed decision before approving the transfer'
+      },
+      acceptance_criteria: [
+        { title: 'FX rate displayed on confirmation screen',
+          given: ['the user has entered a cross-currency payment from a EUR account to a GBP beneficiary'],
+          when: 'the user reaches the payment confirmation screen',
+          then: ['the current EUR/GBP rate is displayed with the time it was retrieved', 'the debit amount in EUR is calculated with that rate and shown'] },
+        { title: 'Rate expiry and refresh',
+          given: ['the displayed rate has passed its validity window'],
+          when: 'the user stays on the confirmation screen',
+          then: ['a new rate is fetched and the amounts are updated', 'the user is told that the rate was refreshed'] },
+        { title: 'Manually priced currency pair',
+          given: ['the currency pair is priced manually by the treasury desk'],
+          when: 'the user reaches the confirmation screen',
+          then: ['an indicative-rate notice is shown instead of a live rate'] }
+      ],
+      open_questions: {
+        functional: ['What is the rate validity window: 30 s, 60 s, or configurable per currency pair?',
+                     'Must the user re-confirm if the rate changes between display and submission?'],
+        technical: ['Which feed supplies live rates, and what is its availability SLA?'],
+        regulatory: ['Does showing the rate constitute a binding quote under the applicable payment-services rules?']
+      },
+      solution_outline: {
+        summary: 'Show the live FX rate and home-currency debit amount on the payment confirmation screen, with a validity window and a fallback for manually priced pairs.',
+        in_scope: ['Rate and debit amount on confirmation screen', 'Rate refresh after validity window', 'Indicative-rate notice for manual pairs'],
+        out_of_scope: ['Changes to FX pricing or spreads', 'Rate alerts / notifications'],
+        unresolved_items: ['Validity window length', 'Feed SLA and fallback']
+      },
+      knowledge_trace: { sources_consulted: [
+        { source: 'Forex Product Guide', reason: 'Which currency pairs are live-priced vs. manually priced' },
+        { source: 'UI Guidelines and Standards', reason: 'Confirmation screen layout and notice patterns' }
+      ] },
+      knowledge_issues: {
+        missing_information: ['Rate validity window is not defined in any source'],
+        conflicts: [],
+        unsupported_assumptions: []
+      },
+      draft_status: 'NEEDS STAKEHOLDER INPUT',
+      suggested_internal_ticket: {
+        title: 'Display live FX rate and debit amount on payment confirmation',
+        issue_type: 'Dev Task',
+        description: 'Implement rate display, refresh after validity window, and indicative notice for manually priced pairs. See acceptance criteria.',
+        suggested_test_case_title: 'Confirmation screen shows timestamped live FX rate and recalculated debit amount'
+      }
+    },
+    so: {
+      user_story: {
+        as_a: 'retail customer with an existing standing order',
+        i_want: 'to change its amount, frequency or end date without deleting it',
+        so_that: 'I keep the same payment set up and avoid mistakes from re-creating it'
+      },
+      acceptance_criteria: [
+        { title: 'Amend amount',
+          given: ['the user has an active standing order'],
+          when: 'the user changes the amount and confirms',
+          then: ['the new amount applies from the next execution', 'the change is shown in the order history'] },
+        { title: 'Late change',
+          given: ['the next execution is less than one business day away'],
+          when: 'the user confirms a change',
+          then: ['the change applies from the following execution', 'the user is told which execution the change takes effect from'] }
+      ],
+      open_questions: {
+        functional: ['Can the beneficiary be amended, or only amount, frequency and end date?'],
+        technical: ['Does the core system support in-place amendment or only cancel and re-create?'],
+        regulatory: []
+      },
+      solution_outline: {},
+      knowledge_trace: { sources_consulted: [
+        { source: 'Release Notes', reason: 'Current standing-order capabilities' },
+        { source: 'Notification Rules', reason: 'Whether amendments trigger a confirmation notice' }
+      ] },
+      knowledge_issues: { missing_information: ['Beneficiary amendment rules'], conflicts: [], unsupported_assumptions: [] },
+      draft_status: 'NEEDS STAKEHOLDER INPUT',
+      suggested_internal_ticket: {
+        title: 'Allow amendment of existing standing orders',
+        issue_type: 'Dev Task',
+        description: 'Amend amount, frequency and end date in place; apply cut-off rule of one business day.',
+        suggested_test_case_title: 'Standing order amendment inside cut-off applies from the following execution'
+      }
+    }
+  };
+
+  // ---------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------
+  var mode = 'mock';
+  var webhookUrl = CONFIG.WEBHOOK_URL;
+  var loadedSampleId = null;
+  var lastSuggestedTicket = null;
+  var lastSolutionOutline = null;
+  var currentRequirementState = null;
+  var currentOriginalRequest = '';
+  var currentTicketMeta = {};
+  var sessionDrafts = [];
+  var sb = null;            // Supabase client (null when auth not configured)
+  var authSession = null;
+
+  function authConfigured() { return !!(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY); }
+
+  // ---------------------------------------------------------------------
+  // Pages, samples, session list
+  // ---------------------------------------------------------------------
+  function showPage(page) {
+    document.querySelectorAll('.nav-btn').forEach(function(b, i) { b.classList.toggle('active', (page === 'workspace') === (i === 0)); });
+    document.getElementById('workspace-page').classList.toggle('hidden', page !== 'workspace');
+    document.getElementById('kb-page').classList.toggle('hidden', page === 'workspace');
+  }
+
+  function renderSamples() {
+    var html = '';
+    SAMPLES.forEach(function(s) {
+      html += '<div class="ticket-item" onclick="loadSample(\'' + s.id + '\', this)"><div class="ticket-id">' + escHtml(s.ticket_id) +
+        ' <span class="badge badge-new">Sample</span></div><div class="ticket-name">' + escHtml(s.title) +
+        '</div><div class="ticket-meta"><span style="font-size:10px;color:var(--c-text-3)">' + escHtml(s.module) + ' · fictional</span></div></div>';
+    });
+    document.getElementById('sample-list').innerHTML = html;
+  }
+
+  function loadSample(id, el) {
+    var s = SAMPLES.filter(function(x) { return x.id === id; })[0];
+    newTicket();
+    if (el) el.classList.add('active');
+    loadedSampleId = id;
+    document.getElementById('meta-id').value = s.ticket_id;
+    document.getElementById('import-textarea').value = s.text;
+    setSelect('meta-module', s.module);
+    setSelect('meta-priority', s.priority);
+    setDeliverables(DEFAULT_DELIVERABLES);
+  }
+
+  function setSelect(id, text) {
+    var sel = document.getElementById(id);
+    for (var i = 0; i < sel.options.length; i++) if (sel.options[i].text === text) { sel.selectedIndex = i; return; }
+  }
+
+  function renderSessionList() {
+    var box = document.getElementById('session-list');
+    if (!sessionDrafts.length) return;
+    var html = '';
+    sessionDrafts.forEach(function(d, i) {
+      html += '<div class="ticket-item" onclick="openSessionDraft(' + i + ', this)"><div class="ticket-id">' + escHtml(d.meta.ticket_id) +
+        ' <span class="source-badge ' + d.source + '" style="padding:1px 5px">' + (d.source === 'mock' ? 'MOCK' : 'LIVE') + '</span></div>' +
+        '<div class="ticket-name">' + escHtml(d.request.slice(0, 70)) + '</div>' +
+        '<div class="ticket-meta"><span style="font-size:10px;color:var(--c-text-3)">' + escHtml(d.time) + ' · ' + escHtml(d.meta.module || '—') + '</span></div></div>';
+    });
+    box.innerHTML = html;
+  }
+
+  function openSessionDraft(i, el) {
+    var d = sessionDrafts[i];
+    document.querySelectorAll('.ticket-item').forEach(function(x) { x.classList.remove('active'); });
+    if (el) el.classList.add('active');
+    currentOriginalRequest = d.request;
+    currentTicketMeta = d.meta;
+    showOutputPanel();
+    renderResult(d.data, d.meta, d.source, d.info, d.requested);
+    setRunStatus('idle', 'Showing a saved ' + (d.source === 'mock' ? 'MOCK' : 'LIVE') + ' draft from ' + d.time + '. No new request was sent.');
+  }
+
+  function newTicket() {
+    resetRequirementSession();
+    loadedSampleId = null;
+    document.querySelectorAll('.ticket-item').forEach(function(el) { el.classList.remove('active'); });
+    document.getElementById('import-panel').classList.remove('hidden');
+    document.getElementById('generating-panel').classList.add('hidden');
+    document.getElementById('output-panel').style.display = 'none';
+    document.getElementById('meta-id').value = '';
+    document.getElementById('meta-module').selectedIndex = 0;
+    document.getElementById('meta-priority').selectedIndex = 0;
+    document.getElementById('import-textarea').value = '';
+    setDeliverables([]);
+    clearImportError();
+  }
+
+  // Default deliverables are used when a sample is loaded.
+  var DEFAULT_DELIVERABLES = ['out-user-story', 'out-acceptance-criteria', 'out-open-questions'];
+  function setDeliverables(ids) {
+    ['out-user-story', 'out-acceptance-criteria', 'out-open-questions', 'out-solution-outline'].forEach(function(id) {
+      document.getElementById(id).checked = ids.indexOf(id) >= 0;
+    });
+  }
+
+  function clearImportError() {
+    var e = document.getElementById('import-error');
+    if (e) e.remove();
+  }
+
+  function showOutputPanel() {
+    document.getElementById('import-panel').classList.add('hidden');
+    document.getElementById('generating-panel').classList.add('hidden');
+    document.getElementById('output-panel').style.display = 'flex';
+    document.getElementById('output-panel').style.flexDirection = 'column';
+  }
+
+  // ---------------------------------------------------------------------
+  // Mode, settings, run status
+  // ---------------------------------------------------------------------
+  function setMode(m) {
+    mode = m;
+    document.getElementById('mode-mock').className = m === 'mock' ? 'on-mock' : '';
+    document.getElementById('mode-live').className = m === 'live' ? 'on-live' : '';
+    refreshConnectionLabel();
+    if (m === 'mock') {
+      setRunStatus('idle', 'Mock mode: requests return a baked-in sample instantly, with no network call. Switch to LIVE for the real agent.');
+    } else {
+      var problem = liveBlocker();
+      if (problem) setRunStatus('warn', 'Live mode is not ready: ' + problem);
+      else setRunStatus('idle', 'Live mode: requests go to the n8n agent at ' + hostOf(webhookUrl) + (authConfigured() ? ' with your Supabase session.' : '.'));
+    }
+  }
+
+  // Returns a human-readable reason why a live call cannot work, or '' if ready.
+  function liveBlocker() {
+    if (location.protocol === 'file:') return 'this page is opened as a local file, so the browser sends origin "null" and n8n will refuse it. Open the hosted page, or use Mock.';
+    if (!webhookUrl) return 'no webhook URL set. Open Settings.';
+    if (authConfigured() && !authSession) return 'you are not signed in. Click "Not signed in" to log in.';
+    return '';
+  }
+
+  function hostOf(u) { try { return new URL(u).host; } catch (e) { return u || '—'; } }
+
+  function refreshConnectionLabel() {
+    var dot = document.getElementById('webhook-dot');
+    var label = document.getElementById('webhook-label');
+    if (!webhookUrl) { dot.style.background = 'var(--c-amber)'; label.textContent = 'Webhook not set'; }
+    else { dot.style.background = 'var(--c-green)'; label.textContent = 'Webhook: ' + hostOf(webhookUrl); }
+  }
+
+  function toggleConfig() {
+    var bar = document.getElementById('config-bar');
+    bar.classList.toggle('hidden');
+    document.getElementById('webhookUrl').value = webhookUrl;
+  }
+
+  function saveWebhook() {
+    var raw = document.getElementById('webhookUrl').value.replace(/[‘’“” ​﻿\s]/g, '');
+    if (raw) {
+      try {
+        var u = new URL(raw);
+        if (u.protocol !== 'https:' && u.protocol !== 'http:') throw new Error();
+      } catch (e) { setRunStatus('error', 'That webhook URL is not valid. Check for hidden characters from copy-paste.'); return; }
+    }
+    webhookUrl = raw;
+    document.getElementById('config-bar').classList.add('hidden');
+    setMode(mode);
+    showNotif('Settings saved');
+  }
+
+  function mockBehaviour() {
+    var r = document.querySelector('input[name="mockb"]:checked');
+    return r ? r.value : 'ok';
+  }
+
+  var statusTimer = null;
+  function setRunStatus(state, text, meta) {
+    if (statusTimer) { clearInterval(statusTimer); statusTimer = null; }
+    var el = document.getElementById('run-status');
+    el.className = 'run-status ' + (state || 'idle');
+    document.getElementById('rs-text').textContent = text;
+    document.getElementById('rs-meta').textContent = meta || '';
+  }
+
+  function startRunningStatus(text) {
+    var t0 = Date.now();
+    setRunStatus('running', text, '0 s');
+    statusTimer = setInterval(function() {
+      var s = Math.round((Date.now() - t0) / 1000) + ' s';
+      document.getElementById('rs-meta').textContent = s;
+      var h = document.getElementById('gen-headline');
+      if (h) h.textContent = 'Waiting for the agent… ' + s;
+    }, 1000);
+    return t0;
+  }
+
+  // ---------------------------------------------------------------------
+  // The one place that talks to the back end (mock or live)
+  // ---------------------------------------------------------------------
+  function callAgent(payload) {
+    return mode === 'mock' ? callMock(payload) : callLive(payload);
+  }
+
+  function callMock(payload) {
+    var behaviour = mockBehaviour();
+    var delay = behaviour === 'slow' ? 8000 : 900;
+    return new Promise(function(resolve, reject) {
+      setTimeout(function() {
+        if (behaviour === 'error') { reject(new Error('HTTP 500 (simulated in Mock mode): the workflow failed. In Live mode the real error text from n8n appears here.')); return; }
+        if (payload._refinement) { resolve(mockRefinement(payload._refinement)); return; }
+        var key = loadedSampleId && MOCKS[loadedSampleId] ? loadedSampleId : 'fx';
+        var data = JSON.parse(JSON.stringify(MOCKS[key]));
+        data._mock_note = (loadedSampleId && MOCKS[loadedSampleId])
+          ? 'Baked-in sample answer for this sample request.'
+          : 'Canned sample answer. It is NOT based on the text you typed. Switch to LIVE for a real result.';
+        resolve(data);
+      }, delay);
+    });
+  }
+
+  // Simulates the agent applying a stakeholder answer: first open question resolved.
+  function mockRefinement(ref) {
+    var d = JSON.parse(JSON.stringify(ref.state || {}));
+    var oq = d.open_questions || {};
+    var resolved = null;
+    ['functional', 'technical', 'regulatory'].some(function(c) {
+      if (Array.isArray(oq[c]) && oq[c].length) { resolved = oq[c].shift(); return true; }
+      return false;
+    });
+    d.knowledge_trace = d.knowledge_trace || { sources_consulted: [] };
+    d.knowledge_trace.sources_consulted = [{ source: 'Stakeholder update (mock)', reason: resolved ? 'Resolved: ' + resolved : 'No open question matched' }];
+    d.draft_status = 'READY FOR BA REVIEW';
+    d._mock_note = 'Mock refinement: the first open question was marked resolved. Your text was not analysed.';
+    return d;
+  }
+
+  function callLive(payload) {
+    var problem = liveBlocker();
+    if (problem) return Promise.reject(new Error(problem));
+
+    var headers = { 'Content-Type': 'application/json' };
+    if (authConfigured()) headers['Authorization'] = 'Bearer ' + authSession.access_token;
+
+    var body = Object.assign({}, payload);
+    delete body._refinement;
+
+    var ctrl = new AbortController();
+    var to = setTimeout(function() { ctrl.abort(); }, CONFIG.LIVE_TIMEOUT_MS);
+
+    return fetch(webhookUrl, { method: 'POST', headers: headers, body: JSON.stringify(body), signal: ctrl.signal })
+      .catch(function(err) {
+        if (err.name === 'AbortError') throw new Error('No answer after ' + (CONFIG.LIVE_TIMEOUT_MS / 1000) + ' s. The workflow may still be running in n8n; check its Executions list.');
+        throw new Error('Could not reach the webhook (' + hostOf(webhookUrl) + '). Usually: the workflow is not active, the URL is the test URL, or this page\'s origin is not in the webhook\'s Allowed Origins (CORS).');
+      })
+      .then(function(res) {
+        clearTimeout(to);
+        return res.text().then(function(raw) {
+          if (res.status === 401 || res.status === 403) {
+            throw new Error('HTTP ' + res.status + ': n8n rejected the session token. Sign out and sign in again.');
+          }
+          if (!res.ok) throw new Error('HTTP ' + res.status + ' from n8n: ' + (raw.slice(0, 300) || '(empty body)'));
+          var data;
+          try { data = JSON.parse(raw); }
+          catch (e) { throw new Error('n8n answered, but not with JSON: ' + raw.slice(0, 200)); }
+          var d = unwrap(data);
+          if (d.parse_error) {
+            throw new Error('the agent ran, but its answer was not valid JSON (n8n node "Parse agent JSON"). Try again; the raw answer is in the n8n execution log.');
+          }
+          if (!d.user_story && !d.acceptance_criteria && !d.open_questions && !d.solution_outline) {
+            throw new Error('n8n answered, but the reply has none of the expected fields (user_story, acceptance_criteria, open_questions). Reply starts: ' + raw.slice(0, 200));
+          }
+          return data;
+        });
+      })
+      .finally(function() { clearTimeout(to); });
+  }
+
+  // ---------------------------------------------------------------------
+  // Generate a new draft
+  // ---------------------------------------------------------------------
+  function startGeneration() {
+    clearImportError();
+    var text = document.getElementById('import-textarea').value.trim();
+    if (!text) { showImportError('Paste a request (or click a sample on the left) first.'); return; }
+    var requestedOutputs = getRequestedOutputs();
+    if (!requestedOutputs.length) {
+      var dbox = document.querySelector('.deliverables-box');
+      dbox.classList.add('needs-choice');
+      setTimeout(function() { dbox.classList.remove('needs-choice'); }, 2500);
+      showImportError('Select at least one deliverable under "What should the agent produce?".');
+      return;
+    }
+    if (mode === 'live') {
+      var problem = liveBlocker();
+      if (problem) { showImportError('Live mode is not ready: ' + problem); setRunStatus('warn', 'Live mode is not ready: ' + problem); return; }
+    }
+
+    resetRequirementSession();
+    var meta = {
+      ticket_id: document.getElementById('meta-id').value || ('DRAFT-' + Math.floor(Math.random() * 900 + 100)),
+      module: document.getElementById('meta-module').value,
+      priority: document.getElementById('meta-priority').value
+    };
+
+    document.getElementById('import-panel').classList.add('hidden');
+    document.getElementById('generating-panel').classList.remove('hidden');
+    document.getElementById('output-panel').style.display = 'none';
+    document.getElementById('gen-detail').textContent = mode === 'mock'
+      ? 'Mock mode: returning a baked-in sample. No network call is made.'
+      : 'Live: the n8n agent is consulting its knowledge tools and Claude. This usually takes 20–60 s.';
+
+    var source = mode;
+    var t0 = startRunningStatus(source === 'mock' ? 'Mock: preparing the baked-in sample…' : 'Live: request sent to ' + hostOf(webhookUrl) + ', waiting for the agent…');
+
+    callAgent({ source: 'manual', content: text, ticket_id: meta.ticket_id, module: meta.module, priority: meta.priority,
+                requested_outputs: requestedOutputs, created_date: new Date().toISOString() })
+      .then(function(data) {
+        var secs = ((Date.now() - t0) / 1000).toFixed(1);
+        var info = { secs: secs, at: new Date().toLocaleTimeString() };
+        currentOriginalRequest = text;
+        currentTicketMeta = meta;
+        showOutputPanel();
+        renderResult(data, meta, source, info, requestedOutputs);
+        sessionDrafts.unshift({ data: data, meta: meta, source: source, info: info, requested: requestedOutputs, request: text, time: info.at });
+        renderSessionList();
+        setRunStatus('success', source === 'mock'
+          ? 'Mock result shown (baked-in sample, no network call).'
+          : 'Live result received from the n8n agent. Review it before use.', secs + ' s · ' + info.at);
+      })
+      .catch(function(err) {
+        document.getElementById('generating-panel').classList.add('hidden');
+        document.getElementById('import-panel').classList.remove('hidden');
+        var msg = (source === 'mock' ? 'Mock: ' : 'Live request failed: ') + (err.message || err);
+        showImportError(msg + ' Your text is still in the form.');
+        setRunStatus('error', msg, ((Date.now() - t0) / 1000).toFixed(1) + ' s');
+      });
+  }
+
+  function showImportError(msg) {
+    var box = document.getElementById('import-error');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'import-error';
+      box.setAttribute('role', 'alert');
+      box.style.cssText = 'background:var(--c-red-bg);border:1px solid var(--c-red-border);color:var(--c-red);padding:10px 12px;border-radius:3px;font-size:12px;margin-top:10px;word-break:break-word;';
+      document.querySelector('.import-box-body .action-row').insertAdjacentElement('afterend', box);
+    }
+    box.textContent = msg;
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // Puts a result on screen and labels where it came from.
+  function renderResult(data, meta, source, info, requested) {
+    var d = unwrap(data);
+    var mapped = mapRequirementsResponse(data);
+    currentRequirementState = d;
+    lastSuggestedTicket = d.suggested_internal_ticket || null;
+
+    var status = d.draft_status || 'Draft';
+    var color = status === 'READY FOR BA REVIEW' ? 'var(--c-green)' : 'var(--c-amber)';
+    document.querySelector('.output-ticket-id').innerHTML =
+      escHtml(meta.ticket_id || 'DRAFT') + ' · ' + escHtml(meta.module || '—') + ' · <span style="color:' + color + '">' + escHtml(status) + '</span>';
+    document.querySelector('.output-ticket-name').textContent = currentOriginalRequest.slice(0, 90);
+
+    var badge = document.getElementById('output-source-badge');
+    badge.className = 'source-badge ' + source;
+    badge.textContent = source === 'mock' ? 'MOCK DATA' : 'LIVE · n8n agent · ' + info.secs + ' s · ' + info.at;
+    var banner = document.getElementById('mock-banner');
+    if (source === 'mock') { banner.classList.remove('hidden'); banner.textContent = '⚠ MOCK DATA. ' + (d._mock_note || 'Baked-in sample, not produced by the agent.'); }
+    else banner.classList.add('hidden');
+
+    applyRequestedOutputVisibility(requested || getRequestedOutputs());
+    var storySpans = document.querySelectorAll('.story-block .editable');
+    storySpans[0].textContent = mapped.as_a || '—';
+    storySpans[1].textContent = mapped.i_want || '—';
+    storySpans[2].textContent = mapped.so_that || '—';
+    document.querySelector('.title-gherkin').closest('.doc-section').querySelector('.doc-section-body').innerHTML = renderGherkin(mapped.acceptance_criteria);
+    document.querySelector('.title-questions').closest('.doc-section').querySelector('.doc-section-body').innerHTML = renderOpenQuestions(mapped.open_questions);
+    renderSolutionOutline(d.solution_outline);
+    renderAgentEvidence(data);
+  }
+
+  // ---------------------------------------------------------------------
+  // Stakeholder update: same agent, current draft + new information
+  // ---------------------------------------------------------------------
+  function updateDraft() {
+    var updateEl = document.getElementById('stakeholder-update');
+    var statusEl = document.getElementById('update-draft-status');
+    var btn = document.getElementById('update-draft-btn');
+    var newInfo = updateEl.value.trim();
+
+    if (!newInfo) { statusEl.textContent = 'Enter the stakeholder answer first.'; statusEl.style.color = 'var(--c-red)'; return; }
+    if (!currentRequirementState) { statusEl.textContent = 'Generate a draft first.'; statusEl.style.color = 'var(--c-red)'; return; }
+    if (mode === 'live' && liveBlocker()) { statusEl.textContent = 'Live mode is not ready: ' + liveBlocker(); statusEl.style.color = 'var(--c-red)'; return; }
+
+    var state = JSON.parse(JSON.stringify(currentRequirementState));
+    delete state._mock_note;
+    var refinementContent =
+      'ITERATIVE REQUIREMENTS UPDATE\n\n' +
+      'Original request:\n' + currentOriginalRequest + '\n\n' +
+      'Current structured draft:\n' + JSON.stringify(state, null, 2) + '\n\n' +
+      'New stakeholder information:\n' + newInfo + '\n\n' +
+      'Instructions:\n' +
+      '- Reassess the requirement using the available knowledge tools where relevant.\n' +
+      '- Treat the stakeholder information above as newly confirmed requirement context.\n' +
+      '- Update the user story, acceptance criteria, solution outline, open questions, knowledge issues and readiness status.\n' +
+      '- Resolve only questions actually answered by the new information.\n' +
+      '- Keep unrelated unresolved questions open.\n' +
+      '- Preserve previously grounded facts unless the new information explicitly changes them.\n' +
+      '- Do not turn remaining unknowns or unsupported assumptions into acceptance criteria.\n' +
+      '- Return the normal structured Requirements Agent output.';
+
+    var meta = currentTicketMeta;
+    var requested = getRequestedOutputs();
+    var source = mode;
+    btn.disabled = true;
+    btn.textContent = 'Updating…';
+    statusEl.style.color = 'var(--c-text-3)';
+    statusEl.textContent = source === 'mock' ? 'Mock: simulating the update…' : 'Live: the agent is reassessing the current draft…';
+    var t0 = startRunningStatus(statusEl.textContent);
+
+    callAgent({ source: 'manual', content: refinementContent, ticket_id: meta.ticket_id, module: meta.module, priority: meta.priority,
+                requested_outputs: requested, created_date: new Date().toISOString(), _refinement: { state: state } })
+      .then(function(data) {
+        var secs = ((Date.now() - t0) / 1000).toFixed(1);
+        var info = { secs: secs, at: new Date().toLocaleTimeString() };
+        renderResult(data, meta, source, info, requested);
+        var historyBox = document.getElementById('chat-history-box');
+        var history = document.getElementById('chat-history');
+        historyBox.classList.remove('hidden');
+        history.insertAdjacentHTML('beforeend',
+          '<div class="chat-msg"><span class="chat-msg-role">Stakeholder</span><span class="chat-msg-text">' + escHtml(newInfo) + '</span></div>' +
+          '<div class="chat-msg"><span class="chat-msg-role">' + (source === 'mock' ? 'Mock' : 'Agent') + '</span><span class="chat-msg-text">' +
+          (source === 'mock' ? 'Simulated update (baked-in behaviour).' : 'Draft re-evaluated with this update.') + '</span></div>');
+        history.scrollTop = history.scrollHeight;
+        updateEl.value = '';
+        statusEl.textContent = 'Update applied (' + (source === 'mock' ? 'mock' : 'live') + ', ' + secs + ' s). Review the revised draft.';
+        setRunStatus('success', source === 'mock' ? 'Mock update applied (simulated).' : 'Live update received from the n8n agent.', secs + ' s · ' + info.at);
+      })
+      .catch(function(err) {
+        var msg = (source === 'mock' ? 'Mock: ' : 'Live update failed: ') + (err.message || err);
+        statusEl.textContent = msg + ' The draft above is unchanged.';
+        statusEl.style.color = 'var(--c-red)';
+        setRunStatus('error', msg, ((Date.now() - t0) / 1000).toFixed(1) + ' s');
+      })
+      .finally(function() { btn.disabled = false; btn.textContent = 'Update draft'; });
+  }
+
+  // ---------------------------------------------------------------------
+  // Auth (Supabase). Only used for Live mode.
+  // ---------------------------------------------------------------------
+  function initAuth() {
+    if (!authConfigured()) {
+      document.getElementById('auth-label').textContent = 'Auth not configured';
+      document.getElementById('auth-dot').style.background = 'var(--c-amber)';
+      return;
+    }
+    if (!window.supabase || !window.supabase.createClient) {
+      document.getElementById('auth-label').textContent = 'Auth library failed to load';
+      document.getElementById('auth-dot').style.background = 'var(--c-red)';
+      return;
+    }
+    try {
+      sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+    } catch (e) {
+      document.getElementById('auth-label').textContent = 'Auth error';
+      return;
+    }
+    sb.auth.getSession().then(function(r) { applySession(r.data && r.data.session); });
+    sb.auth.onAuthStateChange(function(_event, session) { applySession(session); });
+  }
+
+  function applySession(session) {
+    authSession = session || null;
+    var signedIn = !!authSession;
+    document.getElementById('auth-label').textContent = signedIn ? authSession.user.email : 'Not signed in';
+    document.getElementById('auth-dot').style.background = signedIn ? 'var(--c-green)' : 'var(--c-text-3)';
+    document.getElementById('auth-signed-out').classList.toggle('hidden', signedIn);
+    document.getElementById('auth-signed-in').classList.toggle('hidden', !signedIn);
+    if (signedIn) document.getElementById('auth-who').textContent = authSession.user.email;
+    if (mode === 'live') setMode('live');
+  }
+
+  function openAuth() {
+    document.getElementById('auth-msg').textContent = authConfigured() ? '' :
+      'Auth is not configured in this copy of the page (CONFIG.SUPABASE_URL / SUPABASE_ANON_KEY are empty), so Live calls are sent without a login.';
+    document.getElementById('auth-overlay').classList.remove('hidden');
+  }
+  function closeAuth(e) {
+    if (!e || e.target === document.getElementById('auth-overlay')) document.getElementById('auth-overlay').classList.add('hidden');
+  }
+
+  function signIn() {
+    var msg = document.getElementById('auth-msg');
+    if (!sb) { msg.style.color = 'var(--c-red)'; msg.textContent = 'Auth is not configured for this page.'; return; }
+    var email = document.getElementById('auth-email').value.trim();
+    var pw = document.getElementById('auth-password').value;
+    if (!email || !pw) { msg.style.color = 'var(--c-red)'; msg.textContent = 'Enter email and password.'; return; }
+    var btn = document.getElementById('auth-btn');
+    btn.disabled = true; btn.textContent = 'Signing in…';
+    msg.style.color = 'var(--c-text-3)'; msg.textContent = '';
+    sb.auth.signInWithPassword({ email: email, password: pw }).then(function(r) {
+      if (r.error) { msg.style.color = 'var(--c-red)'; msg.textContent = 'Sign-in failed: ' + r.error.message; return; }
+      msg.style.color = 'var(--c-green)'; msg.textContent = 'Signed in.';
+      document.getElementById('auth-password').value = '';
+      setTimeout(function() { closeAuth(); }, 600);
+    }).catch(function(e) {
+      msg.style.color = 'var(--c-red)'; msg.textContent = 'Could not reach Supabase: ' + (e.message || e);
+    }).finally(function() { btn.disabled = false; btn.textContent = 'Sign in'; });
+  }
+
+  function signOut() {
+    if (!sb) return;
+    sb.auth.signOut().then(function() { document.getElementById('auth-msg').textContent = 'Signed out.'; });
+  }
+
+  // ---------------------------------------------------------------------
+  // Small helpers
+  // ---------------------------------------------------------------------
+  function escHtml(s) {
+    return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function showNotif(msg) {
+    var n = document.getElementById('notif');
+    if (!n) return;
+    n.textContent = msg;
+    n.classList.add('show');
+    setTimeout(function() { n.classList.remove('show'); }, 2200);
+  }
+
+  // ---------------------------------------------------------------------
+  // Start
+  // ---------------------------------------------------------------------
+  renderSamples();
+  refreshConnectionLabel();
+  initAuth();
+  setMode('mock');
+
+</script>
+</body>
+</html>
